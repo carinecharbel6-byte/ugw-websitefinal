@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_ui.html" import status, balance %}
+{% block title %}Search{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Search results</h1><p>{% if term %}Results for “{{ term }}”{% else %}Type a name, passport number, city or booking number in the search bar.{% endif %}</p></div></div>
+{% if term %}
+<div class="grid g2">
+  <div class="card"><h2>Clients ({{ res.clients|length }})</h2>
+    {% for c in res.clients %}<div style="padding:6px 0"><a href="{{ url_for('client_detail', cid=c.clientId) }}"><b>{{ c.clientName }}</b></a> {{ status(c.clientType) }} <span class="muted small">{{ c.city or '' }}</span></div>{% else %}<p class="muted">None.</p>{% endfor %}</div>
+  <div class="card"><h2>Travelers ({{ res.travelers|length }})</h2>
+    {% for t in res.travelers %}<div style="padding:6px 0"><b>{{ t.firstName }} {{ t.lastName }}</b> <span class="mono small muted">{{ t.passportNo }}</span> · {{ t.nationality }}</div>{% else %}<p class="muted">None.</p>{% endfor %}</div>
+  <div class="card"><h2>Bookings ({{ res.bookings|length }})</h2>
+    {% for b in res.bookings %}<div style="padding:6px 0"><a href="{{ url_for('booking_detail', bid=b.bookingId) }}"><b>#{{ b.bookingId }}</b></a> {{ b.clientName }} {{ status(b.bookingStatus) }} {{ balance(b.balanceDue) }}</div>{% else %}<p class="muted">None.</p>{% endfor %}</div>
+  <div class="card"><h2>Suppliers ({{ res.suppliers|length }})</h2>
+    {% for s in res.suppliers %}<div style="padding:6px 0"><b>{{ s.supplierName }}</b> <span class="muted small">{{ s.supplierType }} · {{ s.country }}</span></div>{% else %}<p class="muted">None.</p>{% endfor %}</div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "_ui.html" import status, reminder %}
+{% block title %}Invoice {{ i.invoiceNo }}{% endblock %}
+{% block content %}
+<div class="no-print">
+  <div class="crumb"><a href="{{ url_for('invoices_page') }}">Invoices &amp; Payments</a> / {{ i.invoiceNo }}</div>
+  <div class="page-head">
+    <div><h1>Invoice {{ i.invoiceNo }} {{ status(i.invoiceStatus) }}</h1><p>{{ i.invoiceType }} invoice for <a href="{{ url_for('booking_detail', bid=i.forBooking) }}">booking #{{ i.forBooking }}</a></p></div>
+    <div class="actions">
+      {% if i.invoiceStatus != 'Paid' %}{{ reminder(i, 'btn') }}{% if can('payment_new') %}<a class="btn" href="{{ url_for('payment_new', invoice=i.invoiceNo) }}">Record payment</a>{% endif %}{% endif %}
+      <button class="btn btn-primary" type="button" onclick="window.print()">🖨 Print / Save as PDF</button>
+    </div>
+  </div>
+</div>
+
+<div class="paper">
+  <div class="paper-head">
+    <div>
+      <div class="paper-logo">UGW</div>
+      <b>U Group Worldwide</b><br>
+      <span class="muted small">Travel &amp; Events · Beirut · Dubai</span>
+    </div>
+    <div style="text-align:right">
+      <div class="paper-title">{{ 'INVOICE' if i.invoiceType == 'Original' else 'SUPPLEMENTARY INVOICE' }}</div>
+      <table class="paper-meta">
+        <tr><td>Invoice no.</td><td><b>{{ i.invoiceNo }}</b></td></tr>
+        <tr><td>Issue date</td><td>{{ i.issueDate|nice_date }}</td></tr>
+        <tr><td>Due date</td><td>{{ i.dueDate|nice_date }}</td></tr>
+        <tr><td>Booking</td><td>#{{ i.forBooking }}</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="paper-cols">
+    <div><div class="paper-label">Bill to</div>
+      <b>{{ client.clientName }}</b><br>
+      {% if client.street or client.city %}{{ client.street or '' }}{{ ', ' if client.street and client.city }}{{ client.city or '' }} {{ client.country or '' }}<br>{% endif %}
+      {% if client.email %}{{ client.email }}<br>{% endif %}
+      {% for p in phones %}{{ p.clientPhoneNo }}{{ ', ' if not loop.last }}{% endfor %}
+    </div>
+    <div><div class="paper-label">Travelers</div>
+      {% for t in travelers %}{{ t.name }}{% if t.isLeadTraveler %} (lead){% endif %}<br>{% endfor %}
+    </div>
+  </div>
+
+  <table class="paper-lines">
+    <thead><tr><th>Description</th><th>Date(s)</th><th class="num">Amount (USD)</th></tr></thead>
+    <tbody>
+      {% for l in lines %}<tr><td>{{ l.desc }}</td><td>{{ l.dates }}</td><td class="num">{{ l.amount|money }}</td></tr>{% endfor %}
+    </tbody>
+    <tfoot>
+      <tr><td colspan="2" class="num">Invoice total</td><td class="num"><b>{{ i.amount|money }}</b></td></tr>
+      {% for p in payments %}<tr class="muted"><td colspan="2" class="num">Payment {{ p.paymentDate|nice_date }} · {{ p.method }}{% if p.receiptReference %} · {{ p.receiptReference }}{% endif %}</td><td class="num">−{{ p.amount|money }}</td></tr>{% endfor %}
+      <tr class="paper-due"><td colspan="2" class="num">Amount due</td><td class="num">{{ (i.amount - i.paid)|money }}</td></tr>
+    </tfoot>
+  </table>
+  {% if mod %}<p class="small muted">This supplementary invoice bills modification #{{ mod.modificationId }} ({{ mod.modType }}, {{ mod.modDate|nice_date }}). Following the 3NF design, it refers to the modification, which refers to the booking.</p>{% endif %}
+  <p class="small muted">Payment by cash, card or bank transfer. Please quote the invoice number with your payment. Thank you for travelling with UGW.</p>
+</div>
+{% endblock %}

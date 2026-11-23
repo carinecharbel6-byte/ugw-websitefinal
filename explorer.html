@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Table Explorer{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Table Explorer</h1><p>All eighteen tables of the normalized schema, with their columns, keys and records.</p></div></div>
+<div class="grid g3">
+  <div class="card qlist" style="align-self:start">
+    {% for t in info %}
+      <a href="{{ url_for('explorer', table=t.name) }}" class="{{ 'on' if data and data.name == t.name }}">{{ t.name }} <span class="muted small" style="float:right">{{ t.rows }}</span></a>
+    {% endfor %}
+  </div>
+  <div class="span2">
+    {% if data %}
+      <div class="card">
+        <div class="card-head"><h2>{{ data.name }}</h2><span class="badge">{{ data.rows|length }} record(s)</span></div>
+        <div class="chips">
+          {% for c in data.cols %}
+            <span class="chip" title="{{ c.type }}">{% if c.pk %}<span class="pk">🔑 </span>{% endif %}{{ c.name }}
+              <span class="n small">{{ c.type }}{% if c.notnull %} · NOT NULL{% endif %}{% if c.name in data.fks %} · FK → {{ data.fks[c.name] }}{% endif %}</span></span>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="card">
+        <div class="table-wrap"><table>
+          <thead><tr>{% for c in data.cols %}<th>{{ c.name }}</th>{% endfor %}</tr></thead>
+          <tbody>{% for r in data.rows %}<tr>{% for v in r %}<td class="{{ 'num' if v is number }}">{% if v is none %}<span class="muted">NULL</span>{% else %}{{ v }}{% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody>
+        </table></div>
+      </div>
+    {% else %}
+      <div class="card"><h2>Relational schema</h2><p class="muted" style="margin-top:0">Choose a table on the left to see its records. The diagram below is the updated relational schema after normalization (Figure 6.20 of the report).</p>
+        <img class="schema-img" src="{{ url_for('static', filename='img/relational_schema.png') }}" alt="Relational schema"></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

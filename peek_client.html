@@ -1,0 +1,59 @@
+{% from "_ui.html" import status, balance, avatar %}
+<div class="drawer-head">
+  {{ avatar(c.clientName, 52) }}
+  <div style="min-width:0">
+    <h2 style="margin:0">{{ c.clientName }}</h2>
+    <div class="muted small">{{ status(c.clientType) }} · Client #{{ c.clientId }} · handled by {{ c.agent }}</div>
+  </div>
+</div>
+<div class="drawer-actions">
+  <a class="btn btn-primary btn-sm" href="{{ url_for('client_detail', cid=c.clientId) }}">Open full profile</a>
+  <a class="btn btn-sm" href="{{ url_for('quotation_new', client=c.clientId) }}">+ Quotation</a>
+  <a class="btn btn-sm" href="{{ url_for('traveler_new', client=c.clientId) }}">+ Traveler</a>
+</div>
+
+<div class="drawer-section">
+  <h3>Contact</h3>
+  <dl class="facts">
+    <dt>Email</dt><dd>{% if c.email %}<a href="mailto:{{ c.email }}">{{ c.email }}</a>{% else %}–{% endif %}</dd>
+    <dt>Phone</dt><dd>{% for p in phones %}<a href="tel:{{ p.clientPhoneNo|replace(' ','') }}">{{ p.clientPhoneNo }}</a>{{ ', ' if not loop.last }}{% else %}–{% endfor %}</dd>
+    <dt>Address</dt><dd>{% if c.street or c.city %}{{ c.street or '' }}{{ ', ' if c.street and c.city }}{{ c.city or '' }} {{ c.country or '' }}{% else %}–{% endif %}</dd>
+  </dl>
+</div>
+
+{% if credit %}
+<div class="drawer-section">
+  <h3>Credit account {{ status(credit.status) }}</h3>
+  {% set used = (100 * credit.outstandingBalance / credit.creditLimit) if credit.creditLimit else 0 %}
+  <div class="split"><span class="muted">Available</span><b style="color:var(--ok)">${{ (credit.creditLimit - credit.outstandingBalance)|money }}</b></div>
+  <div class="meter {{ 'hi' if used > 60 }}"><span style="width:{{ [used,100]|min }}%"></span></div>
+  <div class="small muted">${{ credit.outstandingBalance|money }} used of ${{ credit.creditLimit|money }} · {{ credit.paymentTerms }}-day terms</div>
+</div>
+{% endif %}
+
+<div class="drawer-section">
+  <h3>Bookings ({{ bookings|length }})</h3>
+  {% for b in bookings %}
+    <a class="mini-row" href="{{ url_for('booking_detail', bid=b.bookingId) }}">
+      <span><b>#{{ b.bookingId }}</b> <span class="muted small">trip {{ b.tripStart|nice_date }}</span></span>
+      <span>{{ status(b.bookingStatus) }} {{ balance(b.balanceDue) }}</span>
+    </a>
+  {% else %}<p class="muted small">No bookings yet.</p>{% endfor %}
+</div>
+
+{% if quotes %}
+<div class="drawer-section">
+  <h3>Waiting for a reply</h3>
+  {% for x in quotes %}
+    <a class="mini-row" href="{{ url_for('quotation_detail', qid=x.quotationId) }}"><span><b>Q-{{ x.quotationId }}</b> {{ x.requestType }}</span><span>${{ (x.quotedTotal or 0)|money }}</span></a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="drawer-section">
+  <h3>Travelers ({{ travelers|length }})</h3>
+  <div class="avatar-stack">
+    {% for t in travelers %}<span title="{{ t.firstName }} {{ t.lastName }}">{{ avatar(t.firstName ~ ' ' ~ t.lastName, 34) }}</span>{% endfor %}
+  </div>
+  <div class="small muted" style="margin-top:6px">{% for t in travelers %}{{ t.firstName }} {{ t.lastName }}{{ ', ' if not loop.last }}{% endfor %}</div>
+</div>

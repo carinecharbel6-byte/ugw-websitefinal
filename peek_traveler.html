@@ -1,0 +1,40 @@
+{% from "_ui.html" import status, avatar %}
+<div class="drawer-head">
+  {{ avatar(t.firstName ~ ' ' ~ t.lastName, 52) }}
+  <div>
+    <h2 style="margin:0">{{ t.firstName }} {{ t.lastName }}</h2>
+    <div class="muted small">Traveler #{{ t.travelerId }} · {{ t.nationality }} · {{ t.age }} years old</div>
+  </div>
+</div>
+
+<div class="passport-card">
+  <div class="pc-top"><span>PASSPORT</span><span>{{ t.nationality }}</span></div>
+  <div class="pc-no">{{ t.passportNo }}</div>
+  <div class="pc-grid">
+    <div><small>Surname</small>{{ t.lastName|upper }}</div><div><small>Given name</small>{{ t.firstName|upper }}</div>
+    <div><small>Date of birth</small>{{ t.dateOfBirth|nice_date }}</div><div><small>Expiry</small>{{ t.passportExpiry|nice_date }}</div>
+  </div>
+  {% if t.passportExpiry < TODAY %}<div class="pc-flag bad">Expired</div>{% elif t.passportExpiry < soon %}<div class="pc-flag">Expires within 6 months</div>{% else %}<div class="pc-flag ok">Valid</div>{% endif %}
+</div>
+
+<div class="drawer-section">
+  <h3>Contact</h3>
+  <dl class="facts">
+    <dt>Email</dt><dd>{{ t.email or '–' }}</dd>
+    <dt>Phone</dt><dd>{% for p in phones %}{{ p.travelerPhoneNo }}{{ ', ' if not loop.last }}{% else %}–{% endfor %}</dd>
+  </dl>
+</div>
+
+<div class="drawer-section">
+  <h3>Registered by</h3>
+  {% for c in clients %}
+    <a class="mini-row" href="{{ url_for('client_detail', cid=c.clientId) }}"><span class="person" style="padding:0">{{ avatar(c.clientName, 28) }} {{ c.clientName }}</span>{{ status(c.clientType) }}</a>
+  {% endfor %}
+</div>
+
+<div class="drawer-section">
+  <h3>Trips ({{ trips|length }})</h3>
+  {% for b in trips %}
+    <a class="mini-row" href="{{ url_for('booking_detail', bid=b.bookingId) }}"><span><b>#{{ b.bookingId }}</b> <span class="muted small">{{ b.clientName }} · {{ b.tripStart|nice_date }}</span>{% if b.isLeadTraveler %} <span class="badge b-brand">Lead</span>{% endif %}</span>{{ status(b.bookingStatus) }}</a>
+  {% else %}<p class="muted small">No trips yet.</p>{% endfor %}
+</div>

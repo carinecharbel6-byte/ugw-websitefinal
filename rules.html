@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Database Rules{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Database Rules</h1><p>Each statement from <code>ugw_tests.sql</code> tries to break one rule of the data dictionary. It runs inside a savepoint that is rolled back, so the data never changes.</p></div>
+  {% set n = tests|selectattr('outcome', 'equalto', 'rejected')|list|length %}
+  <span class="badge {{ 'b-ok' if n == tests|length else 'b-bad' }}" style="font-size:14px;padding:6px 14px">{{ n }} / {{ tests|length }} rejected by SQLite</span>
+</div>
+<div class="card">
+  {% for t in tests %}
+    <div class="rule-card">
+      <div class="rule-icon {{ 'ok' if t.outcome == 'rejected' else 'no' }}">{{ '✓' if t.outcome == 'rejected' else '!' }}</div>
+      <div>
+        <b>{{ t.id }}. {{ t.title }}</b>
+        {% if t.purpose %}<div class="small muted">{{ t.purpose }}</div>{% endif %}
+        <details><summary class="small">Statement</summary><pre class="sql">{{ t.sql }}</pre></details>
+        <div class="err">{{ t.msg }}</div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

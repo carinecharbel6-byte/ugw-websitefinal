@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Suppliers{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Suppliers</h1><p>Airlines, hotels and other providers of booked services, with the commission UGW earns (same calculation as query Q10).</p></div></div>
+<div class="card">
+  <form class="filters" onsubmit="return false"><input data-live="#st" placeholder="Type to filter suppliers…"></form>
+  <div class="table-wrap"><table id="st">
+    <thead><tr><th>Supplier</th><th>Type</th><th>Country</th><th>Contact</th><th>Service types booked</th><th class="num">Services</th><th class="num">Paid to supplier</th><th class="num">Commission rate</th><th class="num">Commission</th></tr></thead>
+    <tbody>
+    {% for s in rows %}
+      <tr><td><b>{{ s.supplierName }}</b></td><td>{{ s.supplierType }}</td><td>{{ s.country }}</td>
+          <td class="small">{{ s.email or '–' }}<div class="muted">{{ s.phones }}</div></td>
+          <td class="small">{{ (s.types or '–').replace(',', ', ') }}</td>
+          <td class="num">{{ s.nServices }}</td><td class="num">${{ s.paidToSupplier|money }}</td>
+          <td class="num">{{ '%.2f'|format(s.commissionRate) ~ ' %' if s.commissionRate is not none else '–' }}</td>
+          <td class="num"><b>${{ s.commission|money }}</b></td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

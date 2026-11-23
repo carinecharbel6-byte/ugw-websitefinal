@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "_ui.html" import status %}
+{% block title %}Record payment{% endblock %}
+{% block content %}
+<div class="crumb"><a href="{{ url_for('invoices_page') }}">Invoices &amp; Payments</a> / Record payment</div>
+<div class="page-head"><div><h1>Record a payment received</h1><p>Use this when a client pays UGW (cash, card or bank transfer). It inserts one row into <code>Payment</code>. An invoice can receive at most three payments; a trigger rejects a fourth.</p></div></div>
+<div class="grid g3">
+<form method="post" class="card stack span2">
+  <div class="field"><label>Invoice *</label>
+    <select name="invoiceNo" id="inv">
+      {% for i in invoices %}
+        <option value="{{ i.invoiceNo }}" data-left="{{ '%.2f'|format(i.amount - i.paid) }}" {{ 'selected' if inv_no == i.invoiceNo }}>
+          {{ i.invoiceNo }} · {{ i.clientName }} · ${{ i.amount|money }} · {{ i.invoiceStatus }} · {{ i.nPayments }}/3 payments</option>
+      {% endfor %}
+    </select></div>
+  <div class="grid g2">
+    <div class="field"><label>Amount (USD) *</label><input name="amount" id="amt" type="number" step="0.01" required value="{{ f.amount }}"></div>
+    <div class="field"><label>Payment date *</label><input name="paymentDate" type="date" required value="{{ f.paymentDate or TODAY }}"></div>
+    <div class="field"><label>Method *</label><select name="method">{% for m in CHOICES.method %}<option {{ 'selected' if f.method == m }}>{{ m }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Payment type *</label><select name="paymentType">{% for m in CHOICES.paymentType %}<option {{ 'selected' if f.paymentType == m }}>{{ m }}</option>{% endfor %}</select></div>
+    <div class="field span2"><label>Receipt reference <span class="hint">optional, 4–30 characters</span></label><input name="receiptReference" value="{{ f.receiptReference }}" placeholder="TRF-261120-01"></div>
+  </div>
+  <div class="actions"><button class="btn btn-primary">Save payment received</button><a class="btn" href="{{ url_for('invoices_page') }}">Cancel</a></div>
+</form>
+<div class="card">
+  <h2>Try the rules</h2>
+  <p class="small">These attempts are rejected by the database itself, not by the website:</p>
+  <ul class="small" style="padding-left:18px;margin:0">
+    <li>Choose invoice <b>1005</b>: it already has three payments (trigger <code>trgMax3Payments</code>).</li>
+    <li>Enter an amount of <b>0</b> or less (CHECK <code>amount &gt; 0</code>).</li>
+    <li>Enter a receipt reference of 2 characters (CHECK on its length).</li>
+  </ul>
+</div>
+</div>
+<script>
+  const sel = document.getElementById('inv'), amt = document.getElementById('amt');
+  function fill() { if (!amt.value) { const v = parseFloat(sel.selectedOptions[0].dataset.left); if (v > 0) amt.value = v.toFixed(2); } }
+  sel.addEventListener('change', () => { amt.value = ''; fill(); }); fill();
+</script>
+{% endblock %}

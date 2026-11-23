@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · UGW Travel &amp; Events</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="login-body">
+{% from "_ui.html" import avatar %}
+<div class="login-wrap">
+  <div class="login-side">
+    <div class="brand" style="border:none;padding:0;margin:0 0 36px"><div class="brand-logo">UGW</div>
+      <div><div class="brand-name">UGW Travel &amp; Events</div><div class="brand-sub">Management System</div></div></div>
+    <h1>Every trip, from the first call to the last payment.</h1>
+    <p>Clients, travelers, quotations, bookings, suppliers, invoices and payments for the Beirut and Dubai branches, in one database.</p>
+    <div class="login-stats">
+      <div><b>18</b><span>tables</span></div><div><b>3NF</b><span>normalized</span></div><div><b>SQLite</b><span>with foreign keys</span></div>
+    </div>
+  </div>
+  <div class="login-main">
+    {% for cat, msg in get_flashed_messages() %}<div class="flash rule"><span>{{ msg }}</span></div>{% endfor %}
+    <h2>Sign in</h2>
+    <p class="muted" style="margin-top:0">Choose your staff account. Each department sees the pages its work needs.</p>
+    {% set order = ['Owner', 'Ticketing', 'Packages', 'Accounting', 'IT'] %}
+    {% set roles = {'Owner': 'Full access, approves credit accounts', 'Ticketing': 'Flights: clients, quotations, bookings, payments',
+                    'Packages': 'Packages and events: clients, quotations, bookings, payments', 'Accounting': 'Invoices, payments, credit accounts, reports',
+                    'IT': 'Database administration: tables, rules, reports'} %}
+    {% for dept in order %}
+      <div class="login-dept"><b>{{ dept }}</b> <span class="muted small">· {{ roles[dept] }}</span></div>
+      <div class="login-grid">
+      {% for e in staff if e.department == dept %}
+        <form method="post" data-native>
+          <input type="hidden" name="employeeId" value="{{ e.employeeId }}"><input type="hidden" name="next" value="{{ next }}">
+          <button class="login-card">
+            {{ avatar(e.firstName ~ ' ' ~ e.lastName, 40) }}
+            <span><b>{{ e.firstName }} {{ e.lastName }}</b><br><span class="small muted">{{ e.branch }}{% if e.nClients %} · {{ e.nClients }} client(s){% endif %}</span></span>
+          </button>
+        </form>
+      {% endfor %}
+      </div>
+    {% endfor %}
+    <p class="small muted" style="margin-top:22px">Demo sign-in: the staff accounts come from the <code>Employee</code> table, so no password is needed.</p>
+  </div>
+</div>
+</body>
+</html>

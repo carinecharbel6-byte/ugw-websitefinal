@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "_ui.html" import status, avatar %}
+{% block title %}Clients{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Clients</h1><p>Individuals, families and companies served by UGW, with their assigned employee.</p></div>
+  {% if can('client_new') %}<a class="btn btn-primary" href="{{ url_for('client_new') }}">+ New client</a>{% endif %}
+</div>
+<div class="card">
+  <form class="filters">
+    <input name="q" value="{{ term }}" placeholder="Search by name, email or city" data-live="#ct" autocomplete="off">
+    <select name="type" onchange="this.form.submit()">
+      <option value="">All client types</option>
+      {% for t in CHOICES.clientType %}<option {{ 'selected' if ctype == t }}>{{ t }}</option>{% endfor %}
+    </select>
+    {% if mine %}<input type="hidden" name="mine" value="1">{% endif %}
+    <button class="btn">Search</button>
+    <span class="muted small">{{ rows|length }} client(s) · click a row for a quick view</span>
+  </form>
+  <div class="chips" style="margin:-4px 0 14px">
+    <a class="chip {{ 'on' if not mine }}" href="{{ url_for('clients', q=term, type=ctype) }}">All clients</a>
+    <a class="chip {{ 'on' if mine }}" href="{{ url_for('clients', mine=1, q=term, type=ctype) }}">Handled by me<span class="n">{{ n_mine }}</span></a>
+  </div>
+  <div class="table-wrap"><table id="ct">
+    <thead><tr><th>ID</th><th>Client</th><th>Type</th><th>Contact</th><th>Handled by</th><th class="num">Travelers</th><th class="num">Bookings</th><th>Credit</th></tr></thead>
+    <tbody>
+    {% for c in rows %}
+      <tr data-peek="{{ url_for('peek_client', cid=c.clientId) }}">
+        <td class="muted">{{ c.clientId }}</td>
+        <td><div class="cell-person">{{ avatar(c.clientName, 34) }}<div><b>{{ c.clientName }}</b>{% if c.city %}<div class="small muted">{{ c.city }}, {{ c.country }}</div>{% endif %}</div></div></td>
+        <td>{{ status(c.clientType) }}</td>
+        <td class="small">{{ c.email or '–' }}<div class="muted">{{ c.phones }}</div></td>
+        <td>{{ c.agent }}</td>
+        <td class="num">{{ c.nTravelers }}</td>
+        <td class="num">{{ c.nBookings }}</td>
+        <td>{% if c.credit %}{{ status(c.credit) }}{% else %}<span class="muted">–</span>{% endif %}</td>
+      </tr>
+    {% else %}<tr><td colspan="8" class="empty">No client matches this search.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

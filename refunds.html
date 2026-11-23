@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_ui.html" import status, avatar %}
+{% block title %}Refunds{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Refunds</h1><p>Money UGW owes back to clients, and the refunds already paid. A refund is due when a booking's derived balance is negative (the client paid more than the booking now costs).</p></div>
+</div>
+
+<div class="grid g4">
+  <div class="card kpi" style="background:var(--info-soft);border-color:#b2ccff"><div class="label">Refunds due</div><div class="value" style="color:var(--info)">${{ due_total|money }}</div><div class="sub">{{ due|length }} booking(s) to pay back</div></div>
+  <div class="card kpi"><div class="label">Refunded so far</div><div class="value">${{ paid_total|money }}</div><div class="sub">{{ paid|length }} refund(s) paid</div></div>
+  <div class="card kpi span2"><div class="label">How refunds are stored</div><div class="sub" style="font-size:13px;color:var(--ink);margin-top:6px">On the <code>Modification</code> row of the change or cancellation: <code>refundToClient</code>, <code>refundDate</code> and <code>refundMethod</code>, which a CHECK keeps together. The refunds are added back in the derived <code>balanceDue</code>.</div></div>
+</div>
+
+<div class="card mt" id="record">
+  <div class="card-head"><h2>Refunds due to clients</h2><span class="badge b-info">{{ due|length }}</span></div>
+  {% for b in due %}
+    <div class="refund-row {{ 'focus' if focus == b.bookingId }}">
+      <div class="cell-person">{{ avatar(b.clientName, 36) }}
+        <div><b>{{ b.clientName }}</b> · <a href="{{ url_for('booking_detail', bid=b.bookingId) }}">booking #{{ b.bookingId }}</a> {{ status(b.bookingStatus) }}
+          <div class="small muted">Booking now costs ${{ (b.totalAmount + b.charges)|money }} · client paid ${{ b.paid|money }} · already refunded ${{ b.refunds|money }}</div></div>
+      </div>
+      <div class="refund-owed">${{ (-b.balanceDue)|money }}<small>owed to the client</small></div>
+      {% if can('refund_record') %}
+      <form method="post" action="{{ url_for('refund_record') }}" class="refund-form">
+        <input type="hidden" name="bookingId" value="{{ b.bookingId }}"><input type="hidden" name="next" value="{{ url_for('refunds') }}">
+        <input name="amount" type="number" step="0.01" min="0.01" max="{{ '%.2f'|format(-b.balanceDue) }}" value="{{ '%.2f'|format(-b.balanceDue) }}" title="Amount refunded">
+        <select name="refundMethod">{% for m in CHOICES.method %}<option {{ 'selected' if m == 'Bank transfer' }}>{{ m }}</option>{% endfor %}</select>
+        <button class="btn btn-primary btn-sm">Record refund paid</button>
+      </form>
+      {% endif %}
+    </div>
+  {% else %}
+    <div class="empty">✓ No refunds are due. Every booking is settled or still owes UGW money.</div>
+  {% endfor %}
+</div>
+
+<div class="card mt">
+  <div class="card-head"><h2>Refunds already paid</h2><form class="filters" style="margin:0" onsubmit="return false"><input data-live="#rt" placeholder="Type to filter…"></form></div>
+  <div class="table-wrap"><table id="rt">
+    <thead><tr><th>Date</th><th>Client</th><th>Booking</th><th>Reason</th><th>Method</th><th class="num">Amount</th></tr></thead>
+    <tbody>
+    {% for r in paid %}
+      <tr><td>{{ r.refundDate|nice_date }}</td><td><a href="{{ url_for('client_detail', cid=r.clientId) }}">{{ r.clientName }}</a></td>
+          <td><a href="{{ url_for('booking_detail', bid=r.bookingId) }}">#{{ r.bookingId }}</a> {{ status(r.modType) }}</td>
+          <td class="small">{{ r.reason }}</td><td>{{ r.refundMethod }}</td><td class="num"><b>${{ r.refundToClient|money }}</b></td></tr>
+    {% else %}<tr><td colspan="6" class="empty">No refunds yet.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

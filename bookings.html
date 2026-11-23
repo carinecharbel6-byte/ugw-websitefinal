@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_ui.html" import status, balance, avatar %}
+{% block title %}Bookings{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Bookings</h1><p>Confirmed trips and events. Totals and balances are derived attributes, calculated with the same SQL as queries Q4 and Q5.</p></div>
+  <a class="btn btn-primary" href="{{ url_for('quotations', status='Confirmed') }}">+ Book a confirmed quotation</a>
+</div>
+<div class="card">
+  <form class="filters">
+    <input name="q" value="{{ term }}" placeholder="Search by client or booking number" data-live="#bt" autocomplete="off">
+    <input type="hidden" name="status" value="{{ sel }}">
+    <button class="btn">Search</button>
+    <span class="muted small">Click a row for a quick view</span>
+  </form>
+  <div class="chips" style="margin-bottom:14px">
+    <a class="chip {{ 'on' if not sel }}" href="{{ url_for('bookings_page', q=term) }}">All<span class="n">{{ counts.values()|sum }}</span></a>
+    {% for s in CHOICES.bookingStatus %}<a class="chip {{ 'on' if sel == s }}" href="{{ url_for('bookings_page', status=s, q=term) }}">{{ s }}<span class="n">{{ counts.get(s, 0) }}</span></a>{% endfor %}
+  </div>
+  <div class="table-wrap"><table id="bt">
+    <thead><tr><th>Booking</th><th>Client</th><th>Booked on</th><th>Trip starts</th><th>Agent</th><th class="num">Travelers</th><th class="num">Total</th><th class="num">Paid</th><th class="num">Balance</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for b in rows %}
+      <tr data-peek="{{ url_for('peek_booking', bid=b.bookingId) }}">
+        <td><b>#{{ b.bookingId }}</b></td>
+        <td><div class="cell-person">{{ avatar(b.clientName, 30) }}{{ b.clientName }}</div></td><td>{{ b.bookingDate|nice_date }}</td><td>{{ b.tripStart|nice_date }}</td><td>{{ b.agent }}</td>
+        <td class="num">{{ b.travelerCount }}</td><td class="num">${{ b.totalAmount|money }}</td><td class="num">${{ b.paid|money }}</td>
+        <td class="num">{{ balance(b.balanceDue) }}</td><td>{{ status(b.bookingStatus) }}</td>
+      </tr>
+    {% else %}<tr><td colspan="10" class="empty">No bookings match.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

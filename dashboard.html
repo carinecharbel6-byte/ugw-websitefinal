@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% from "_ui.html" import status, balance, avatar %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Welcome back, {{ ME.firstName }}</h1><p>{{ ME.department }} · {{ ME.branch }} branch · {% if mine %}you handle {{ kpi.my_clients }} client(s){% else %}overview of all clients, bookings and payments{% endif %}</p></div>
+  <div class="actions">
+    {% if can('client_new') %}<a class="btn" href="{{ url_for('client_new') }}">+ New client</a>{% endif %}
+    {% if can('quotation_new') %}<a class="btn btn-primary" href="{{ url_for('quotation_new') }}">+ New quotation</a>{% endif %}
+    {% if not can('quotation_new') and can('payment_new') %}<a class="btn btn-primary" href="{{ url_for('payment_new') }}">+ Record payment</a>{% endif %}
+  </div>
+</div>
+
+<div class="grid g4">
+  <div class="card kpi accent"><div class="label">Service-fee income</div><div class="value">${{ kpi.fee_income|money }}</div><div class="sub">from all active booked services</div></div>
+  <div class="card kpi"><div class="label">Open bookings</div><div class="value">{{ kpi.open_bookings }}</div><div class="sub">Reserved or Issued</div></div>
+  <div class="card kpi"><div class="label">Outstanding balances</div><div class="value">${{ kpi.outstanding|money }}</div><div class="sub">derived balanceDue &gt; 0</div></div>
+  <div class="card kpi"><div class="label">Overdue invoices</div><div class="value" style="color:var(--bad)">{{ kpi.overdue_n }}</div><div class="sub">${{ kpi.overdue_amt|money }} past due date</div></div>
+</div>
+
+<div class="grid g3 mt">
+  <div class="card span2">
+    <div class="card-head"><h2>Upcoming services · next 45 days</h2><a class="small" href="{{ url_for('reports', q='Q12') }}">SQL: Q12 →</a></div>
+    {% if upcoming %}
+    <table><thead><tr><th>Start</th><th>Service</th><th>Client</th><th>Supplier</th><th>Booking</th></tr></thead><tbody>
+    {% for u in upcoming %}
+      <tr data-peek="{{ url_for('peek_booking', bid=u.bookingId) }}"><td>{{ u.startDate|nice_date }}</td><td><span class="svc"><i>{{ ICON[u.serviceType] }}</i>{{ u.serviceType }}</span></td><td>{{ u.clientName }}</td><td class="muted">{{ u.supplierName }}</td>
+          <td><a href="{{ url_for('booking_detail', bid=u.bookingId) }}">#{{ u.bookingId }}</a></td></tr>
+    {% endfor %}</tbody></table>
+    {% else %}<div class="empty">No services start in the next 45 days.</div>{% endif %}
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>Alerts</h2></div>
+    {% if not passport and not overdue %}<p class="muted">No passport or payment alerts.</p>{% endif %}
+    {% for p in passport %}
+      <div class="flash rule" style="margin-bottom:10px"><span>🛂</span><span><b>{{ p.traveler }}</b>'s passport expires {{ p.passportExpiry|nice_date }}, less than 6 months after the trip on {{ p.tripStart|nice_date }} (<a href="{{ url_for('booking_detail', bid=p.bookingId) }}">booking #{{ p.bookingId }}</a>).</span></div>
+    {% endfor %}
+    {% for i in overdue %}
+      <div class="flash rule" style="margin-bottom:10px;background:var(--warn-soft);border-color:#fedf89;color:#93370d"><span>⏰</span><span>Invoice <b>{{ i.invoiceNo }}</b> ({{ i.clientName }}) was due {{ i.dueDate|nice_date }}: ${{ (i.amount - i.paid)|money }} unpaid.</span></div>
+    {% endfor %}
+  </div>
+</div>
+
+
+<div class="card mt">
+  <div class="card-head"><h2>{{ 'My quotation follow-ups' if mine else 'Quotation follow-ups' }}</h2><a class="small" href="{{ url_for('quotations', status='Pending') }}">All pending →</a></div>
+  {% for f in followups %}
+    <div class="fu-row">
+      <span class="fu-dot {{ f.kind }}"></span>
+      <div class="fu-main"><a href="{{ url_for('quotation_detail', qid=f.quotationId) }}"><b>Q-{{ f.quotationId }}</b></a> · {{ f.clientName }} · {{ f.requestType }} · ${{ (f.quotedTotal or 0)|money }}
+        <div class="small muted">{{ f.text }} · prepared by {{ f.agent }}</div></div>
+      <div class="actions">
+        {% if f.kind == 'expired' %}
+          <form method="post" action="{{ url_for('quotation_status', qid=f.quotationId) }}"><input type="hidden" name="next" value="{{ url_for('dashboard') }}"><button class="btn btn-sm" name="action" value="Expired">Mark Expired</button></form>
+        {% elif f.kind == 'unsent' %}
+          <a class="btn btn-sm btn-primary" href="{{ url_for('quotation_detail', qid=f.quotationId) }}">Send to client</a>
+        {% else %}
+          <form method="post" action="{{ url_for('quotation_status', qid=f.quotationId) }}"><input type="hidden" name="next" value="{{ url_for('dashboard') }}"><button class="btn btn-sm" name="action" value="Confirmed">Client confirmed</button></form>
+          <form method="post" action="{{ url_for('quotation_status', qid=f.quotationId) }}"><input type="hidden" name="next" value="{{ url_for('dashboard') }}"><button class="btn btn-sm" name="action" value="Rejected">Client declined</button></form>
+        {% endif %}
+      </div>
+    </div>
+  {% else %}<div class="empty">No quotation needs a follow-up.</div>{% endfor %}
+</div>
+
+<div class="grid g3 mt">
+  <div class="card">
+    <div class="card-head"><h2>Fee income by service type</h2></div>
+    {% set mx = by_type|map(attribute='fee')|max %}
+    {% for t in by_type %}
+      <div class="bar-row"><span class="svc"><i>{{ ICON[t.serviceType] }}</i>{{ t.serviceType }}</span><div class="bar"><span style="width:{{ (100 * t.fee / mx)|round(1) }}%"></span></div><span class="num">${{ t.fee|money }}</span></div>
+    {% endfor %}
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>Fee income by booking month</h2></div>
+    {% set mx2 = by_month|map(attribute='fee')|max %}
+    <div class="cols">
+      {% for m in by_month %}
+        <div class="c"><b>{{ (m.fee/1000)|round(1) }}k</b><i style="height:{{ (100 * m.fee / mx2)|round(1) }}%"></i><small>{{ m.ym[5:] }}/{{ m.ym[2:4] }}</small></div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>Latest bookings</h2><a class="small" href="{{ url_for('bookings_page') }}">All →</a></div>
+    <table><tbody>
+    {% for b in recent %}
+      <tr data-peek="{{ url_for('peek_booking', bid=b.bookingId) }}"><td><div class="cell-person">{{ avatar(b.clientName, 30) }}<div><b>#{{ b.bookingId }}</b><div class="small muted">{{ b.clientName }}</div></div></div></td>
+          <td>{{ status(b.bookingStatus) }}</td><td class="num">{{ balance(b.balanceDue) }}</td></tr>
+    {% endfor %}</tbody></table>
+  </div>
+</div>
+
+<div class="grid g4 mt">
+  <div class="card kpi"><div class="label">{{ 'My clients' if mine else 'Clients' }}</div><div class="value">{{ kpi.my_clients if mine else kpi.clients }}</div>{% if mine %}<div class="sub"><a href="{{ url_for('clients', mine=1) }}">Open my client list</a></div>{% endif %}</div>
+  <div class="card kpi"><div class="label">Travelers</div><div class="value">{{ kpi.travelers }}</div></div>
+  <div class="card kpi"><div class="label">Pending quotations</div><div class="value">{{ kpi.pending_quotes }}</div></div>
+  <div class="card kpi"><div class="label">Tables in the database</div><div class="value">18</div><div class="sub"><a href="{{ url_for('explorer') }}">Open the table explorer</a></div></div>
+</div>
+{% endblock %}

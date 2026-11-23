@@ -1,0 +1,38 @@
+{% macro status(s) -%}
+{%- set cls = {
+  'Confirmed':'b-ok','Completed':'b-ok','Paid':'b-ok','Active':'b-ok',
+  'Pending':'b-warn','Reserved':'b-info','Issued':'b-brand','Partially paid':'b-warn','Unpaid':'b-info',
+  'Rejected':'b-bad','Cancelled':'b-bad','Overdue':'b-bad','Expired':'b-bad','Suspended':'b-bad',
+  'Company':'b-brand','Family':'b-info','Individual':'',
+  'Original':'','Supplementary':'b-warn','Change':'b-info','Cancellation':'b-bad'
+}.get(s, '') -%}
+<span class="badge {{ cls }}">{{ s }}</span>
+{%- endmacro %}
+
+{% macro balance(v) -%}
+{%- if v > 0 %}<span class="badge b-warn">{{ v|money }} due</span>
+{%- elif v < 0 %}<span class="badge b-info">{{ (-v)|money }} refund due</span>
+{%- else %}<span class="badge b-ok">Settled</span>{% endif -%}
+{%- endmacro %}
+
+{% macro avatar(name, size=36) -%}
+<span class="avatar" style="width:{{ size }}px;height:{{ size }}px;font-size:{{ (size * 0.38)|round|int }}px;background:{{ name|avatar_color }}">{{ name|initials }}</span>
+{%- endmacro %}
+
+{% macro next_step(n, post_url=None) -%}
+{%- set ic, title, text, url, label = n[0], n[1], n[2], n[3], n[4] -%}
+<div class="next-step">
+  <div class="ns-icon">{{ ic }}</div>
+  <div class="ns-body"><div class="ns-label">Next step</div><b>{{ title }}</b><div class="small muted">{{ text }}</div></div>
+  <div class="actions">
+    {% if n|length > 5 and n[5] and post_url %}<form method="post" action="{{ post_url }}"><input type="hidden" name="status" value="{{ n[5] }}"><button class="btn btn-primary">{{ label }}</button></form>
+    {% elif url and label %}<a class="btn btn-primary" href="{{ url }}" {{ 'data-native' if url.startswith('#') }}>{{ label }} →</a>{% endif %}
+  </div>
+</div>
+{%- endmacro %}
+
+{% macro reminder(i, cls='btn btn-sm') -%}
+{%- if i.clientEmail -%}
+<a class="{{ cls }}" href="mailto:{{ i.clientEmail }}?subject={{ ('Payment reminder – UGW invoice ' ~ i.invoiceNo)|urlencode }}&body={{ ('Dear ' ~ i.clientName ~ ',\n\nThis is a friendly reminder that invoice ' ~ i.invoiceNo ~ ' of $' ~ (i.amount|money) ~ ', issued on ' ~ (i.issueDate|nice_date) ~ ', was due on ' ~ (i.dueDate|nice_date) ~ '. The amount still due is $' ~ ((i.amount - i.paid)|money) ~ '.\n\nYou can pay by bank transfer, card or cash at our Beirut or Dubai office. Please quote the invoice number with your payment.\n\nThank you,\nUGW Travel & Events')|urlencode }}" title="Opens an email to {{ i.clientEmail }}">✉ Send reminder</a>
+{%- else -%}<span class="btn btn-sm" style="opacity:.5;cursor:default" title="No email on file: call the client">✉ No email</span>{%- endif -%}
+{%- endmacro %}

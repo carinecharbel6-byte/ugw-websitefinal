@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% from "_ui.html" import status, next_step %}
+{% block title %}Quotation Q-{{ qu.quotationId }}{% endblock %}
+{% block content %}
+<div class="crumb"><a href="{{ url_for('quotations') }}">Quotations</a> / Q-{{ qu.quotationId }}</div>
+<div class="page-head">
+  <div><h1>Quotation Q-{{ qu.quotationId }} {{ status(qu.quoteStatus) }}</h1>
+    <p><a href="{{ url_for('client_detail', cid=qu.clientId) }}">{{ qu.clientName }}</a> · {{ qu.requestType }} request by {{ qu.contactChannel }} · prepared by {{ qu.agent }}</p></div>
+  {% if qu.bookingId %}<a class="btn btn-primary" href="{{ url_for('booking_detail', bid=qu.bookingId) }}">Open booking #{{ qu.bookingId }} →</a>{% endif %}
+</div>
+
+{% if qu.quoteStatus == 'Pending' and qu.validUntil and qu.validUntil < TODAY %}
+  <div class="flash rule" style="background:var(--warn-soft);border-color:#fedf89;color:#93370d"><span class="t">⌛ Follow up:</span><span>the validity ended on {{ qu.validUntil|nice_date }} and the client has not replied. Call the client, or mark the quotation Expired.</span></div>
+{% elif qu.quoteStatus == 'Pending' and qu.issuedDate %}
+  <div class="flash ok" style="background:var(--info-soft);border-color:#b2ccff;color:#1849a9"><span class="t">📨 Waiting for the client:</span><span>sent on {{ qu.issuedDate|nice_date }}, valid until {{ qu.validUntil|nice_date }}. When the client answers, mark it Confirmed or Rejected.</span></div>
+{% endif %}
+{{ next_step(nxt) }}
+<div class="card">
+  {% set stage = 4 if qu.bookingId else (3 if qu.quoteStatus == 'Confirmed' else (2 if qu.issuedDate else 1)) %}
+  <div class="steps">
+    {% for label in ['Requested', 'Issued to client', 'Confirmed', 'Booked'] %}
+      <div class="step {{ 'done' if loop.index <= stage }}"><div class="dot">{{ loop.index }}</div>{{ label }}</div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="grid g3 mt">
+  <div class="card span2">
+    <div class="card-head"><h2>Quotation lines (weak entity <i>QuotationLine</i>)</h2><b>${{ total|money }}</b></div>
+    <table><thead><tr><th>Line</th><th>Service</th><th>Start</th><th>End</th><th class="num">Quoted price</th></tr></thead><tbody>
+      {% for l in lines %}<tr><td>{{ l.lineNo }}</td><td><span class="svc"><i>{{ ICON[l.serviceType] }}</i>{{ l.serviceType }}</span></td><td>{{ l.startDate|nice_date }}</td><td>{{ l.endDate|nice_date }}</td><td class="num">${{ l.quotedPrice|money }}</td></tr>{% endfor %}
+    </tbody></table>
+  </div>
+  <div class="card" id="actions">
+    <h2>Details</h2>
+    <dl class="facts">
+      <dt>Requested</dt><dd>{{ qu.requestDate|nice_date }}</dd>
+      <dt>Issued</dt><dd>{{ qu.issuedDate|nice_date }}</dd>
+      <dt>Valid until</dt><dd>{{ qu.validUntil|nice_date }}</dd>
+      <dt>Status</dt><dd>{{ status(qu.quoteStatus) }}</dd>
+    </dl>
+    {% if not qu.bookingId and can('quotation_status') %}
+    <div style="margin-top:16px">
+      {% if not qu.issuedDate %}
+        <form method="post" action="{{ url_for('quotation_status', qid=qu.quotationId) }}" class="stack">
+          <input type="hidden" name="action" value="issue">
+          <div class="field"><label>Valid until</label><input type="date" name="validUntil" value="{{ valid_default }}"></div>
+          <button class="btn btn-primary">Issue to client</button>
+        </form>
+      {% endif %}
+      <form method="post" action="{{ url_for('quotation_status', qid=qu.quotationId) }}" class="actions" style="margin-top:10px">
+        {% for a in ['Confirmed', 'Rejected', 'Expired'] if a != qu.quoteStatus %}
+          <button class="btn btn-sm" name="action" value="{{ a }}">Mark {{ a }}</button>
+        {% endfor %}
+      </form>
+      {% if not qu.issuedDate %}<p class="small muted">A CHECK constraint only allows Confirmed, Rejected or Expired once the quotation has an issue date. Try it.</p>{% endif %}
+    </div>
+    {% elif qu.bookingId %}
+      <p class="small muted" style="margin-top:14px">This quotation resulted in a booking, so a trigger keeps it Confirmed.</p>
+      <form method="post" action="{{ url_for('quotation_status', qid=qu.quotationId) }}"><button class="btn btn-sm" name="action" value="Pending">Try to set it back to Pending</button></form>
+    {% endif %}
+  </div>
+</div>
+
+{% if not qu.bookingId and qu.quoteStatus not in ('Rejected', 'Expired') and can('quotation_book') %}
+<div class="card mt" id="book">
+  <div class="card-head"><h2>Convert to booking</h2>{% if qu.quoteStatus != 'Confirmed' %}<span class="badge b-warn">Only Confirmed quotations can be booked (trigger)</span>{% endif %}</div>
+  <p class="muted" style="margin-top:0">Creates the <code>Booking</code>, one <code>BookingService</code> per line, the <code>BookingTraveler</code> rows and the Original <code>Invoice</code>, all in one transaction.</p>
+  <form method="post" action="{{ url_for('quotation_book', qid=qu.quotationId) }}" class="stack">
+    <table><thead><tr><th>Line</th><th>Service</th><th>Supplier</th><th class="num">Quoted</th><th style="width:160px">UGW service fee</th></tr></thead><tbody>
+    {% for l in lines %}
+      <tr><td>{{ l.lineNo }}</td><td>{{ l.serviceType }}</td>
+        {% set want = {"Flight":"Airline","Hotel":"Hotel","Transfer":"Transfer","CarRental":"CarRental","Insurance":"Insurer","Event":"Venue","Package":"Other"}[l.serviceType] %}<td><select name="supplier{{ l.lineNo }}">{% set ns = namespace(done=false) %}{% for s in suppliers %}<option value="{{ s.supplierId }}" {% if not ns.done and s.supplierType == want %}selected{% set ns.done = true %}{% endif %}>{{ s.supplierName }} ({{ s.supplierType }})</option>{% endfor %}</select></td>
+        <td class="num">${{ l.quotedPrice|money }}</td>
+        <td><input type="number" step="0.01" min="0" name="fee{{ l.lineNo }}" value="{{ (l.quotedPrice * 0.05)|round(2) }}"></td></tr>
+    {% endfor %}
+    </tbody></table>
+    <div class="field mt"><label>Travelers on this booking <span class="hint">(registered by {{ qu.clientName }}; choose the lead traveler)</span></label>
+      {% for t in travelers %}
+        <div style="display:flex;gap:14px;align-items:center;padding:4px 0">
+          <label style="display:flex;gap:6px;align-items:center;font-weight:500;margin:0"><input type="checkbox" name="travelers" value="{{ t.travelerId }}" style="width:auto" {{ 'checked' if loop.first }}> {{ t.firstName }} {{ t.lastName }}</label>
+          <label class="small muted" style="display:flex;gap:4px;align-items:center;font-weight:400;margin:0"><input type="radio" name="lead" value="{{ t.travelerId }}" style="width:auto" {{ 'checked' if loop.first }}> lead</label>
+        </div>
+      {% else %}<p class="muted">This client has no registered travelers yet. <a href="{{ url_for('traveler_new', client=qu.clientId) }}">Register one first.</a></p>{% endfor %}
+    </div>
+    <button class="btn btn-primary">Create booking</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

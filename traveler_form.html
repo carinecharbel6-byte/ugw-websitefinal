@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Register traveler{% endblock %}
+{% block content %}
+<div class="crumb"><a href="{{ url_for('travelers') }}">Travelers</a> / New</div>
+<div class="page-head"><div><h1>Register a traveler</h1><p>Inserts into <code>Traveler</code>, <code>ClientTraveler</code> (who registered them) and optionally <code>TravelerPhone</code>.</p></div></div>
+<form method="post" class="card stack" style="max-width:760px">
+  <div class="grid g2">
+    <div class="field"><label>Registered by (client) *</label>
+      <select name="clientId">{% for c in clients %}<option value="{{ c.clientId }}" {{ 'selected' if (f.clientId or preset)|string == c.clientId|string }}>{{ c.clientName }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Passport number * <span class="hint">6–12 capital letters or digits, unique</span></label><input name="passportNo" required minlength="6" maxlength="12" value="{{ f.passportNo }}" placeholder="LR1234567"></div>
+    <div class="field"><label>First name *</label><input name="firstName" required maxlength="30" value="{{ f.firstName }}"></div>
+    <div class="field"><label>Last name *</label><input name="lastName" required maxlength="30" value="{{ f.lastName }}"></div>
+    <div class="field"><label>Date of birth *</label><input name="dateOfBirth" type="date" required value="{{ f.dateOfBirth }}"></div>
+    <div class="field"><label>Nationality * <span class="hint">3-letter code, e.g. LBN</span></label><input name="nationality" required minlength="3" maxlength="3" value="{{ f.nationality }}" placeholder="LBN"></div>
+    <div class="field"><label>Passport expiry *</label><input name="passportExpiry" type="date" required value="{{ f.passportExpiry }}"></div>
+    <div class="field"><label>Email <span class="hint">optional</span></label><input name="email" type="email" value="{{ f.email }}"></div>
+    <div class="field"><label>Phone <span class="hint">optional</span></label><input name="phone" value="{{ f.phone }}" placeholder="+961 3 123 456"></div>
+  </div>
+  <div class="actions"><button class="btn btn-primary">Register traveler</button><a class="btn" href="{{ url_for('travelers') }}">Cancel</a></div>
+</form>
+{% endblock %}

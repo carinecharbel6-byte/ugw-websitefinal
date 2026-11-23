@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% from "_ui.html" import status, balance, next_step %}
+{% block title %}Booking #{{ b.bookingId }}{% endblock %}
+{% block content %}
+<div class="crumb"><a href="{{ url_for('bookings_page') }}">Bookings</a> / #{{ b.bookingId }}</div>
+<div class="page-head">
+  <div><h1>Booking #{{ b.bookingId }} {{ status(b.bookingStatus) }}</h1>
+    <p><a href="{{ url_for('client_detail', cid=b.clientId) }}">{{ b.clientName }}</a> · booked {{ b.bookingDate|nice_date }} by {{ b.agent }} · from <a href="{{ url_for('quotation_detail', qid=b.quotationId) }}">quotation Q-{{ b.quotationId }}</a></p></div>
+  {% if can('booking_status') %}<form method="post" action="{{ url_for('booking_status', bid=b.bookingId) }}" class="actions">
+    {% if b.bookingStatus != 'Cancelled' %}<a class="btn" href="#modify" data-native>Change / cancel</a>{% endif %}
+    <select name="status" style="width:auto">{% for s in CHOICES.bookingStatus %}<option {{ 'selected' if s == b.bookingStatus }}>{{ s }}</option>{% endfor %}</select>
+    <button class="btn">Update status</button>
+  </form>{% endif %}
+</div>
+
+{{ next_step(nxt, url_for('booking_status', bid=b.bookingId) if can('booking_status') else None) }}
+<div class="card" style="margin-bottom:18px">
+  <div class="steps">
+    {% for label, done in journey %}<div class="step {{ 'done' if done }}"><div class="dot">{{ '✓' if done else loop.index }}</div>{{ label }}</div>{% endfor %}
+  </div>
+</div>
+<div class="grid g4">
+  <div class="card kpi"><div class="label">Total amount</div><div class="value">${{ b.totalAmount|money }}</div><div class="sub">active services</div></div>
+  <div class="card kpi"><div class="label">Modification charges</div><div class="value">${{ b.charges|money }}</div><div class="sub">refunds ${{ b.refunds|money }}</div></div>
+  <div class="card kpi"><div class="label">Paid</div><div class="value">${{ b.paid|money }}</div><div class="sub">on all its invoices</div></div>
+  {% if b.balanceDue < 0 %}
+  <div class="card kpi" style="background:var(--info-soft);border-color:#b2ccff"><div class="label">Refund due to client (derived)</div><div class="value" style="color:var(--info)">${{ (-b.balanceDue)|money }}</div><div class="sub">the client paid more than the booking costs</div></div>
+  {% else %}
+  <div class="card kpi accent"><div class="label">Balance due (derived)</div><div class="value">${{ b.balanceDue|money }}</div><div class="sub">total + charges − paid + refunds</div></div>
+  {% endif %}
+</div>
+
+<div class="card mt">
+  <div class="card-head"><h2>Services (weak entity <i>BookingService</i>)</h2><span class="muted small">{{ b.travelerCount }} traveler(s)</span></div>
+  <table><thead><tr><th>#</th><th>Service</th><th>Supplier</th><th>Dates</th><th class="num">Supplier cost</th><th class="num">UGW fee</th><th class="num">Price</th><th>Status</th></tr></thead><tbody>
+  {% for s in services %}
+    <tr><td>{{ s.serviceNo }}</td><td><span class="svc"><i>{{ ICON[s.serviceType] }}</i>{{ s.serviceType }}</span></td><td>{{ s.supplierName }} <span class="muted small">({{ s.supplierType }})</span></td>
+        <td>{{ s.startDate|nice_date }}{% if s.endDate %} → {{ s.endDate|nice_date }}{% endif %}</td>
+        <td class="num">${{ s.supplierCost|money }}</td><td class="num">${{ s.serviceFee|money }}</td><td class="num"><b>${{ s.price|money }}</b></td><td>{{ status(s.serviceStatus) }}</td></tr>
+  {% endfor %}
+  </tbody></table>
+</div>
+
+<div class="grid g2 mt">
+  <div class="card">
+    <h2>Travelers</h2>
+    <table><tbody>
+    {% for t in travelers %}
+      <tr data-peek="{{ url_for('peek_traveler', tid=t.travelerId) }}"><td><b>{{ t.firstName }} {{ t.lastName }}</b> {% if t.isLeadTraveler %}<span class="badge b-brand">Lead</span>{% endif %}
+            <div class="small muted">{{ t.nationality }} · passport {{ t.passportNo }}</div></td>
+          <td class="num">{{ t.passportExpiry|nice_date }}{% if b.tripStart and t.passportExpiry < b.tripStart %} <span class="badge b-bad">expired at departure</span>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody></table>
+  </div>
+  <div class="card">
+    <h2>Changes and cancellations</h2>
+    {% for m in mods %}
+      <div style="padding:8px 0;border-bottom:1px solid var(--line)">{{ status(m.modType) }} <b>{{ m.modDate|nice_date }}</b> – {{ m.reason }}
+        <div class="small muted">Charge to client ${{ m.totalCharge|money }}{% if m.refundToClient %} · refund ${{ m.refundToClient|money }} by {{ m.refundMethod }} on {{ m.refundDate|nice_date }}{% endif %}</div></div>
+    {% else %}<p class="muted">No changes recorded for this booking.</p>{% endfor %}
+  </div>
+</div>
+
+<div class="card mt">
+  <div class="card-head"><h2>Invoices and payments</h2></div>
+  <table><thead><tr><th>Invoice</th><th>Type</th><th>Issued</th><th>Due</th><th class="num">Amount</th><th class="num">Paid</th><th class="num">Payments</th><th>Status</th><th></th></tr></thead><tbody>
+  {% for i in invoices %}
+    <tr><td><a href="{{ url_for('invoice_view', no=i.invoiceNo) }}"><b>{{ i.invoiceNo }}</b></a></td><td>{{ status(i.invoiceType) }}</td><td>{{ i.issueDate|nice_date }}</td><td>{{ i.dueDate|nice_date }}</td>
+        <td class="num">${{ i.amount|money }}</td><td class="num">${{ i.paid|money }}</td><td class="num">{{ i.nPayments }} / 3</td><td>{{ status(i.invoiceStatus) }}</td>
+        <td><div class="actions"><a class="btn btn-sm" href="{{ url_for('invoice_view', no=i.invoiceNo) }}">View</a>{% if i.invoiceStatus != 'Paid' %}<a class="btn btn-sm" href="{{ url_for('payment_new', invoice=i.invoiceNo) }}">Record payment</a>{% endif %}</div></td></tr>
+  {% else %}<tr><td colspan="9" class="empty">No invoices.</td></tr>{% endfor %}
+  </tbody></table>
+  {% if payments %}
+  <h3 class="mt">Payments received</h3>
+  <table><thead><tr><th>Payment</th><th>Date</th><th>Invoice</th><th>Method</th><th>Type</th><th>Receipt</th><th class="num">Amount</th></tr></thead><tbody>
+  {% for p in payments %}
+    <tr><td>{{ p.paymentId }}</td><td>{{ p.paymentDate|nice_date }}</td><td>{{ p.invoiceNo }}</td><td>{{ p.method }}</td><td>{{ p.paymentType }}</td><td class="mono small">{{ p.receiptReference or '–' }}</td><td class="num">${{ p.amount|money }}</td></tr>
+  {% endfor %}
+  </tbody></table>
+  {% endif %}
+</div>
+<div class="card mt">
+  <div class="card-head"><h2>Activity history</h2><span class="muted small">built from the dates stored in Quotation, Booking, Invoice, Payment and Modification</span></div>
+  <div class="history">
+  {% for d, ic, text in history %}
+    <div class="h-item"><div class="h-icon">{{ ic }}</div><div><b>{{ d|nice_date }}</b> · {{ text }}</div></div>
+  {% endfor %}
+  </div>
+</div>
+
+{% if (b.bookingStatus != 'Cancelled' or b.balanceDue < 0) and can('booking_modify') %}
+<div class="card mt" id="modify">
+  <div class="card-head"><h2>Record a change or cancellation</h2><span class="muted small">Creates a <code>Modification</code>; charges are billed on a Supplementary invoice</span></div>
+  <form method="post" action="{{ url_for('booking_modify', bid=b.bookingId) }}" class="stack" data-modform data-balance="{{ b.balanceDue }}">
+    <div class="grid g4">
+      <div class="field"><label>Type</label><select name="modType" data-modtype><option>Change</option><option>Cancellation</option></select></div>
+      <div class="field span2"><label>Reason *</label><input name="reason" required maxlength="200" placeholder="e.g. Client asked to move the flight two days later"></div>
+      <div class="field"><label>Charge to client</label><div class="total-pill" data-charge>$0.00</div></div>
+      <div class="field"><label>Supplier penalty (USD)</label><input name="supplierPenaltyFee" type="number" step="0.01" min="0" value="0" data-fee></div>
+      <div class="field"><label>UGW change fee (USD)</label><input name="agencyChangeFee" type="number" step="0.01" min="0" value="0" data-fee></div>
+    </div>
+    <div data-when="Change" class="grid g4">
+      <div class="field span2"><label>Service that changes <span class="hint">optional</span></label>
+        <select name="changeService" data-svc><option value="">–</option>{% for s in services if s.serviceStatus == 'Active' %}<option value="{{ s.serviceNo }}" data-price="{{ s.price }}">{{ s.serviceNo }}. {{ s.serviceType }} – {{ s.supplierName }} ({{ s.startDate|nice_date }}, ${{ s.price|money }})</option>{% endfor %}</select></div>
+      <div class="field"><label>New start date</label><input type="date" name="newStart"></div>
+      <div class="field"><label>New end date</label><input type="date" name="newEnd"></div>
+      <div class="field"><label>New price (USD) <span class="hint">optional</span></label><input type="number" step="0.01" min="0" name="newPrice" placeholder="unchanged"></div>
+    </div>
+    <div data-when="Cancellation" hidden>
+      <div class="field"><label>Services the client cancels <span class="hint">tick only those; cancelling every service cancels the whole booking</span></label>
+        {% for s in services if s.serviceStatus == 'Active' %}
+          <label style="display:flex;gap:8px;align-items:center;font-weight:500"><input type="checkbox" name="services" value="{{ s.serviceNo }}" data-price="{{ s.price }}" style="width:auto"> {{ ICON[s.serviceType] }} {{ s.serviceType }} – {{ s.supplierName }} (${{ s.price|money }})</label>
+        {% else %}<p class="small muted">All services are already cancelled; you can still record a refund below.</p>{% endfor %}
+      </div>
+    </div>
+    <div class="grid g4">
+      <div class="field"><label>Refund to client (USD) <span class="hint">optional</span></label><input name="refundToClient" type="number" step="0.01" min="0" value="{{ '%.2f'|format(-b.balanceDue) if b.balanceDue < 0 else 0 }}">
+        <button type="button" class="btn btn-sm" data-suggest hidden style="margin-top:6px"></button></div>
+      <div class="field"><label>Refund method</label><select name="refundMethod">{% for m in CHOICES.method %}<option>{{ m }}</option>{% endfor %}</select></div>
+      <div class="field span2"><label>Effect on the balance</label><div class="live-hint" data-effect style="margin-top:8px"></div></div>
+    </div>
+    <label class="deduct" data-deduct-wrap hidden><input type="checkbox" name="deduct" value="1" data-deduct style="width:auto">
+      Take the charge out of the refund instead of issuing a Supplementary invoice <span class="hint">(UGW keeps the charge from money the client already paid)</span></label>
+    <button class="btn btn-primary">Record</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

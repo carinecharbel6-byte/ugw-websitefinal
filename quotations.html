@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_ui.html" import status %}
+{% block title %}Quotations{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Quotations</h1><p>Every request starts as a quotation. Once the client confirms it, it can result in exactly one booking (1:1 <i>ResultsIn</i>).</p></div>
+  <a class="btn btn-primary" href="{{ url_for('quotation_new') }}">+ New quotation</a>
+</div>
+<div class="card">
+  <div class="chips" style="margin-bottom:14px">
+    <a class="chip {{ 'on' if not sel }}" href="{{ url_for('quotations') }}">All<span class="n">{{ counts.values()|sum }}</span></a>
+    {% for s in CHOICES.quoteStatus %}<a class="chip {{ 'on' if sel == s }}" href="{{ url_for('quotations', status=s) }}">{{ s }}<span class="n">{{ counts.get(s, 0) }}</span></a>{% endfor %}
+  </div>
+  <form class="filters" onsubmit="return false"><input data-live="#qt" placeholder="Type to filter this list…"></form>
+  <div class="table-wrap"><table id="qt">
+    <thead><tr><th>No.</th><th>Client</th><th>Requested</th><th>Channel</th><th>Type</th><th>Prepared by</th><th class="num">Lines</th><th class="num">Quoted total</th><th>Status</th><th>Follow-up</th><th>Booking</th></tr></thead>
+    <tbody>
+    {% for x in rows %}
+      <tr>
+        <td><a href="{{ url_for('quotation_detail', qid=x.quotationId) }}"><b>Q-{{ x.quotationId }}</b></a></td>
+        <td>{{ x.clientName }}</td><td>{{ x.requestDate|nice_date }}</td><td>{{ x.contactChannel }}</td><td>{{ x.requestType }}</td>
+        <td>{{ x.agent }}</td><td class="num">{{ x.nLines }}</td><td class="num">${{ (x.quotedTotal or 0)|money }}</td>
+        <td>{{ status(x.quoteStatus) }}</td>
+        <td class="small">{% set f = fu.get(x.quotationId) %}{% if f %}<span class="fu-dot {{ f.kind }}"></span> {{ {'expired':'Past validity','waiting':'Awaiting reply','unsent':'Not sent'}[f.kind] }}{% if f.kind == 'waiting' %} · {{ f.daysLeft }}d left{% endif %}{% else %}<span class="muted">–</span>{% endif %}</td>
+        <td>{% if x.bookingId %}<a href="{{ url_for('booking_detail', bid=x.bookingId) }}">#{{ x.bookingId }}</a>{% else %}<span class="muted">–</span>{% endif %}</td>
+      </tr>
+    {% else %}<tr><td colspan="11" class="empty">No quotations with this status.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  <p class="small muted" style="margin-bottom:0">Quoted total is a derived attribute (sum of the quoted prices of the lines).</p>
+</div>
+{% endblock %}

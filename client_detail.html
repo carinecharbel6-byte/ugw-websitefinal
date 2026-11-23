@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% from "_ui.html" import status, balance, avatar, next_step %}
+{% block title %}{{ c.clientName }}{% endblock %}
+{% block content %}
+<div class="crumb"><a href="{{ url_for('clients') }}">Clients</a> / {{ c.clientId }}</div>
+<div class="page-head">
+  <div class="cell-person" style="gap:14px">{{ avatar(c.clientName, 54) }}<div><h1>{{ c.clientName }} {{ status(c.clientType) }}</h1><p>Handled by {{ c.agent }} ({{ c.department }}, {{ c.branch }})</p></div></div>
+  <div class="actions">
+    {% if can('client_edit') %}<a class="btn" href="{{ url_for('client_edit', cid=c.clientId) }}">✎ Edit</a>{% endif %}
+    {% if can('client_delete') %}<form method="post" action="{{ url_for('client_delete', cid=c.clientId) }}" onsubmit="return confirm('Delete {{ c.clientName }}? This is only allowed if the client has no quotations and no credit account.')"><button class="btn">🗑 Delete</button></form>{% endif %}
+    {% if can('traveler_new') %}<a class="btn" href="{{ url_for('traveler_new', client=c.clientId) }}">+ Register traveler</a>{% endif %}
+    {% if can('quotation_new') %}<a class="btn btn-primary" href="{{ url_for('quotation_new', client=c.clientId) }}">+ New quotation</a>{% endif %}
+  </div>
+</div>
+
+{{ next_step(nxt) }}
+<div class="grid g3">
+  <div class="card">
+    <h2>Contact details</h2>
+    <dl class="facts">
+      <dt>Email</dt><dd>{{ c.email or '–' }}</dd>
+      <dt>Phone(s)</dt><dd>{% for p in phones %}{{ p.clientPhoneNo }}{{ ', ' if not loop.last }}{% else %}–{% endfor %}</dd>
+      <dt>Address</dt><dd>{% if c.street or c.city %}{{ c.street or '' }}{{ ', ' if c.street and c.city }}{{ c.city or '' }} {{ c.country or '' }}{% else %}–{% endif %}</dd>
+      <dt>Travelers</dt><dd>{{ travelers|length }}</dd>
+      <dt>Bookings</dt><dd>{{ bookings|length }}</dd>
+    </dl>
+  </div>
+  <div class="card span2">
+    <div class="card-head"><h2>Credit account</h2>{% if credit %}{{ status(credit.status) }}{% endif %}</div>
+    {% if credit %}
+      {% set used = (100 * credit.outstandingBalance / credit.creditLimit) if credit.creditLimit else 0 %}
+      <div class="grid g3">
+        <div><div class="muted small">Credit limit</div><b style="font-size:20px">${{ credit.creditLimit|money }}</b></div>
+        <div><div class="muted small">Outstanding balance <span class="hint">(derived)</span></div><b style="font-size:20px">${{ credit.outstandingBalance|money }}</b></div>
+        <div><div class="muted small">Available credit <span class="hint">(derived)</span></div><b style="font-size:20px;color:var(--ok)">${{ (credit.creditLimit - credit.outstandingBalance)|money }}</b></div>
+      </div>
+      <div class="meter {{ 'hi' if used > 60 }}"><span style="width:{{ [used,100]|min }}%"></span></div>
+      <div class="small muted">{{ used|round(1) }}% used · payment terms {{ credit.paymentTerms }} days · approved {{ credit.approvalDate|nice_date }}{% if credit.expiryDate %} · expires {{ credit.expiryDate|nice_date }}{% endif %}</div>
+    {% else %}
+      <p class="muted" style="margin-top:0">This client has no credit account. Only Company clients may hold one (a trigger enforces this rule).</p>
+      {% if can('credit_new') %}<form method="post" action="{{ url_for('credit_new', cid=c.clientId) }}" class="filters" style="margin:0">
+        <input name="creditLimit" type="number" step="0.01" placeholder="Credit limit (USD)" required style="min-width:180px">
+        <input name="paymentTerms" type="number" value="180" title="Payment terms (days)" style="min-width:110px">
+        <button class="btn">Open credit account</button>
+      </form>{% else %}<p class="small muted">Credit accounts are approved by the Owner or Accounting.</p>{% endif %}
+    {% endif %}
+  </div>
+</div>
+
+<div class="card mt">
+  <div class="card-head"><h2>Bookings</h2></div>
+  <table><thead><tr><th>Booking</th><th>Date</th><th>Status</th><th class="num">Travelers</th><th class="num">Total</th><th class="num">Balance</th></tr></thead><tbody>
+  {% for b in bookings %}
+    <tr data-peek="{{ url_for('peek_booking', bid=b.bookingId) }}"><td><b>#{{ b.bookingId }}</b></td><td>{{ b.bookingDate|nice_date }}</td><td>{{ status(b.bookingStatus) }}</td>
+        <td class="num">{{ b.travelerCount }}</td><td class="num">${{ b.totalAmount|money }}</td><td class="num">{{ balance(b.balanceDue) }}</td></tr>
+  {% else %}<tr><td colspan="6" class="empty">No bookings yet.</td></tr>{% endfor %}
+  </tbody></table>
+</div>
+
+<div class="grid g2 mt">
+  <div class="card">
+    <div class="card-head"><h2>Quotations</h2></div>
+    <table><thead><tr><th>No.</th><th>Requested</th><th>Type</th><th>Status</th><th class="num">Quoted</th></tr></thead><tbody>
+    {% for x in quotes %}
+      <tr><td><a href="{{ url_for('quotation_detail', qid=x.quotationId) }}">Q-{{ x.quotationId }}</a></td><td>{{ x.requestDate|nice_date }}</td><td>{{ x.requestType }}</td>
+          <td>{{ status(x.quoteStatus) }}</td><td class="num">${{ (x.quotedTotal or 0)|money }}</td></tr>
+    {% else %}<tr><td colspan="5" class="empty">No quotations.</td></tr>{% endfor %}
+    </tbody></table>
+  </div>
+  <div class="card">
+    <div class="card-head"><h2>Registered travelers</h2><a class="small" href="{{ url_for('traveler_new', client=c.clientId) }}">+ Add</a></div>
+    <table><thead><tr><th>Traveler</th><th>Passport</th><th>Expiry</th></tr></thead><tbody>
+    {% for t in travelers %}
+      <tr data-peek="{{ url_for('peek_traveler', tid=t.travelerId) }}"><td><div class="cell-person">{{ avatar(t.firstName ~ ' ' ~ t.lastName, 30) }}<div><b>{{ t.firstName }} {{ t.lastName }}</b><div class="small muted">{{ t.nationality }} · born {{ t.dateOfBirth|nice_date }}</div></div></div></td>
+          <td class="mono small">{{ t.passportNo }}</td><td>{{ t.passportExpiry|nice_date }}</td></tr>
+    {% else %}<tr><td colspan="3" class="empty">No travelers registered.</td></tr>{% endfor %}
+    </tbody></table>
+  </div>
+</div>
+
+<div class="card mt">
+  <div class="card-head"><h2>Invoices</h2></div>
+  <table><thead><tr><th>Invoice</th><th>Type</th><th>Issued</th><th>Due</th><th class="num">Amount</th><th class="num">Paid</th><th>Status</th><th></th></tr></thead><tbody>
+  {% for i in invoices %}
+    <tr><td><a href="{{ url_for('invoice_view', no=i.invoiceNo) }}"><b>{{ i.invoiceNo }}</b></a></td><td>{{ status(i.invoiceType) }}</td><td>{{ i.issueDate|nice_date }}</td><td>{{ i.dueDate|nice_date }}</td>
+        <td class="num">${{ i.amount|money }}</td><td class="num">${{ i.paid|money }}</td><td>{{ status(i.invoiceStatus) }}</td>
+        <td>{% if i.invoiceStatus != 'Paid' %}<a class="btn btn-sm" href="{{ url_for('payment_new', invoice=i.invoiceNo) }}">Record payment</a>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="8" class="empty">No invoices.</td></tr>{% endfor %}
+  </tbody></table>
+</div>
+{% endblock %}

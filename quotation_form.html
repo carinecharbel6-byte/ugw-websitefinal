@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}New quotation{% endblock %}
+{% block content %}
+<div class="crumb"><a href="{{ url_for('quotations') }}">Quotations</a> / New</div>
+<div class="page-head"><div><h1>New quotation</h1><p>Inserts the <code>Quotation</code> (status Pending by default) and its <code>QuotationLine</code> rows in one transaction.</p></div></div>
+<form method="post" class="card stack" style="max-width:900px">
+  <div class="grid g2">
+    <div class="field"><label>Client *</label>
+      <select name="clientId">{% for c in clients %}<option value="{{ c.clientId }}" {{ 'selected' if (f.clientId or preset)|string == c.clientId|string }}>{{ c.clientName }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Prepared by *</label>
+      <select name="employeeId">{% for e in employees %}<option value="{{ e.employeeId }}" {{ 'selected' if e.employeeId == me_id }}>{{ e.firstName }} {{ e.lastName }} – {{ e.department }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Contact channel *</label>
+      <select name="contactChannel">{% for x in CHOICES.contactChannel %}<option>{{ x }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Request type *</label>
+      <select name="requestType">{% for x in CHOICES.requestType %}<option>{{ x }}</option>{% endfor %}</select></div>
+  </div>
+  <h2 class="mt">Lines <span class="hint">at least one</span></h2>
+  <div class="line-row small muted"><span>Service</span><span>Start date</span><span>End date (optional)</span><span>Quoted price (USD)</span><span></span></div>
+  <div id="lines">
+    {% for i in range(1, 4) %}
+    <div class="line-row" data-i="{{ i }}" {{ 'hidden' if i > 1 }}>
+      <select name="type{{ i }}"><option value="">–</option>{% for x in CHOICES.serviceType %}<option {{ 'selected' if i == 1 and x == 'Flight' }}>{{ x }}</option>{% endfor %}</select>
+      <input type="date" name="start{{ i }}" value="2026-12-15">
+      <input type="date" name="end{{ i }}" value="2026-12-20">
+      <input type="number" step="0.01" min="0" name="price{{ i }}" value="{{ 850 if i == 1 }}">
+      <button type="button" class="btn btn-sm" onclick="this.parentNode.hidden=true;this.parentNode.querySelector('select').value=''">✕</button>
+    </div>
+    {% endfor %}
+  </div>
+  <button type="button" class="btn btn-sm" onclick="const h=[...document.querySelectorAll('.line-row[hidden]')][0]; if(h){h.hidden=false; h.querySelector('select').value='Hotel';}">+ Add line</button>
+  <div class="actions mt"><button class="btn btn-primary">Create quotation</button><a class="btn" href="{{ url_for('quotations') }}">Cancel</a></div>
+</form>
+{% endblock %}

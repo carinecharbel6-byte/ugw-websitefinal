@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}About the Project{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>About the Project</h1><p>INDE 513 Information Systems · American University of Beirut · Fall 2026 · Instructor: Dr. Maysaa Jaafar</p></div></div>
+<div class="grid g2">
+  <div class="card">
+    <h2>Design of a Travel and Events Management Database for U Group Worldwide</h2>
+    <p>UGW is a travel and events agency with branches in Beirut and Dubai. This website is connected to the project's SQLite database, which was designed through the full process of the course:</p>
+    <ol>
+      <li>Requirements analysis and business rules</li>
+      <li>Conceptual design with ER diagrams</li>
+      <li>Relational design and the relational schema</li>
+      <li>Data dictionary</li>
+      <li>Functional dependencies and normalization to 3NF</li>
+      <li>SQLite implementation: tables, constraints, triggers, sample data and queries</li>
+    </ol>
+    <p class="muted small">The database is built from the submitted files <code>ugw_schema.sql</code> and <code>ugw_data.sql</code>. The SQL Reports page reads <code>ugw_queries.sql</code> and the Database Rules page reads <code>ugw_tests.sql</code>, so the website always shows the same code as the report.</p>
+    <h3 class="mt">Team</h3>
+    <p>Carine Charbel · Chayenne Nassif · Maria Rizk · Tara Dagher · Yasmine Mansour</p>
+    <h3 class="mt">Built with</h3>
+    <p>Python, Flask and SQLite. AI assistance: Claude (Anthropic) was used to help write and test the website code.</p>
+  </div>
+  <div class="card">
+    <h2>Complete ER diagram</h2>
+    <img class="schema-img" src="{{ url_for('static', filename='img/er_diagram.png') }}" alt="Complete ER diagram">
+  </div>
+</div>
+{% endblock %}

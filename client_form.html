@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit client' if editing else 'New client' }}{% endblock %}
+{% block content %}
+<div class="crumb"><a href="{{ url_for('clients') }}">Clients</a> / {{ editing.clientName if editing else 'New' }}</div>
+<div class="page-head"><div><h1>{{ 'Edit ' ~ editing.clientName if editing else 'New client' }}</h1><p>{% if editing %}Updates the <code>Client</code> row and replaces its <code>ClientPhone</code> rows, in one transaction.{% else %}Inserts one row into <code>Client</code> and one row per phone number into <code>ClientPhone</code>, in one transaction.{% endif %}</p></div></div>
+<form method="post" class="card stack" style="max-width:760px">
+  <div class="grid g2">
+    <div class="field"><label>Client name *</label><input name="clientName" required maxlength="50" value="{{ f.clientName }}"></div>
+    <div class="field"><label>Client type *</label>
+      <select name="clientType">{% for t in CHOICES.clientType %}<option {{ 'selected' if f.clientType == t }}>{{ t }}</option>{% endfor %}</select></div>
+    <div class="field"><label>Email <span class="hint">optional</span></label><input name="email" type="email" value="{{ f.email }}"></div>
+    <div class="field"><label>Phone number(s) * <span class="hint">e.g. +961 3 123 456, separate with commas</span></label><input name="phones" required value="{{ f.phones }}" placeholder="+961 3 123 456"></div>
+    <div class="field"><label>Street <span class="hint">optional</span></label><input name="street" value="{{ f.street }}"></div>
+    <div class="field"><label>City <span class="hint">optional</span></label><input name="city" value="{{ f.city }}"></div>
+    <div class="field"><label>Country <span class="hint">optional</span></label><input name="country" value="{{ f.country }}" placeholder="Lebanon"></div>
+    <div class="field"><label>Handled by (employee) *</label>
+      <select name="employeeId">{% for e in employees %}<option value="{{ e.employeeId }}" {{ 'selected' if f.employeeId|string == e.employeeId|string }}>{{ e.firstName }} {{ e.lastName }} – {{ e.department }}, {{ e.branch }}</option>{% endfor %}</select></div>
+  </div>
+  <div class="actions"><button class="btn btn-primary">{{ 'Save changes' if editing else 'Save client' }}</button><a class="btn" href="{{ url_for('client_detail', cid=editing.clientId) if editing else url_for('clients') }}">Cancel</a></div>
+</form>
+{% endblock %}

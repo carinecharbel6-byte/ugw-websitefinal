@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}UGW Travel &amp; Events{% endblock %} · UGW</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+{% macro icon(name) -%}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+{%- if name == 'home' %}<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>
+{%- elif name == 'users' %}<circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6"/><path d="M16 4a4 4 0 0 1 0 8"/><path d="M22 21c0-3-2-5-4-5.6"/>
+{%- elif name == 'passport' %}<rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M9 17h6"/>
+{%- elif name == 'quote' %}<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/>
+{%- elif name == 'plane' %}<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>
+{%- elif name == 'invoice' %}<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/><path d="M7 15h3"/>
+{%- elif name == 'refund' %}<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>
+{%- elif name == 'truck' %}<path d="M3 7h11v10H3z"/><path d="M14 10h4l3 3v4h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>
+{%- elif name == 'chart' %}<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>
+{%- elif name == 'shield' %}<path d="M12 2l8 4v6c0 5-3.5 9-8 10-4.5-1-8-5-8-10V6z"/><path d="m9 12 2 2 4-4"/>
+{%- elif name == 'db' %}<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>
+{%- elif name == 'info' %}<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+{%- endif %}</svg>
+{%- endmacro %}
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">UGW</div>
+      <div><div class="brand-name">UGW Travel &amp; Events</div><div class="brand-sub">Management System</div></div>
+    </div>
+    {% set nav = [
+      ('Operations', [('dashboard','Dashboard','home'), ('clients','Clients','users'), ('travelers','Travelers','passport'),
+                      ('quotations','Quotations','quote'), ('bookings_page','Bookings','plane'),
+                      ('invoices_page','Invoices & Payments','invoice'), ('refunds','Refunds','refund'), ('suppliers','Suppliers','truck')]),
+      ('Database', [('reports','SQL Reports','chart'), ('rules','Database Rules','shield'), ('explorer','Table Explorer','db'), ('about','About the Project','info')])
+    ] %}
+    <nav class="nav">
+      {% for label, items in nav %}
+        {% set ns = namespace(n=0) %}{% for ep, t, i in items %}{% if can(ep) %}{% set ns.n = ns.n + 1 %}{% endif %}{% endfor %}
+        {% if ns.n %}<div class="nav-label">{{ label }}</div>{% endif %}
+        {% for ep, text, ic in items if can(ep) %}
+          {% set active = endpoint == ep or endpoint.startswith(ep.split('_')[0][:-1]) %}
+          <a href="{{ url_for(ep) }}" class="{{ 'active' if active }}">{{ icon(ic) }}{{ text }}</a>
+        {% endfor %}
+      {% endfor %}
+    </nav>
+    <div class="side-foot">
+      Connected to <b>ugw.db</b> (SQLite) with <code>PRAGMA foreign_keys = ON</code>.
+      {% if can('reset') %}<form method="post" action="{{ url_for('reset') }}" onsubmit="return confirm('Rebuild the demo database from the SQL files? Records added on the website will be removed.')">
+        <button class="btn btn-ghost btn-sm">Reset demo data</button>
+      </form>{% endif %}
+    </div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <form action="{{ url_for('search') }}"><input name="q" placeholder="Search clients, travelers, passports, bookings, suppliers…" value="{{ request.args.get('q','') if endpoint == 'search' }}"></form>
+      <div class="today">Today <b>{{ TODAY|nice_date }}</b></div>
+      <div class="bell-wrap">
+        <button class="bell" type="button" onclick="this.parentNode.classList.toggle('open')" aria-label="Alerts">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          {% if ALERTS %}<span class="bell-n">{{ ALERTS|length }}</span>{% endif %}
+        </button>
+        <div class="bell-menu">
+          <div class="bell-title">Alerts</div>
+          {% for ic, text, link in ALERTS %}<a href="{{ link }}" class="bell-item"><span>{{ ic }}</span><span>{{ text }}</span></a>
+          {% else %}<div class="bell-item muted">No alerts.</div>{% endfor %}
+        </div>
+      </div>
+      {% if ME %}
+      <div class="bell-wrap me-wrap">
+        <button class="me" type="button" onclick="this.parentNode.classList.toggle('open')">
+          <span class="avatar" style="width:34px;height:34px;font-size:13px;background:{{ (ME.firstName ~ ' ' ~ ME.lastName)|avatar_color }}">{{ (ME.firstName ~ ' ' ~ ME.lastName)|initials }}</span>
+          <span style="text-align:left"><b>{{ ME.firstName }} {{ ME.lastName }}</b><span class="small muted" style="display:block">{{ ME.department }} · {{ ME.branch }}</span></span>
+          <span class="muted">▾</span>
+        </button>
+        <div class="bell-menu" style="width:260px">
+          <div class="bell-title">{{ ME.email }}</div>
+          <a class="bell-item" href="{{ url_for('clients', mine=1) }}"><span>👥</span><span>My clients</span></a>
+          <a class="bell-item" href="{{ url_for('login') }}" data-native><span>🔁</span><span>Switch user</span></a>
+          <a class="bell-item" href="{{ url_for('logout') }}" data-native><span>🚪</span><span>Sign out</span></a>
+        </div>
+      </div>
+      {% endif %}
+    </header>
+    <main class="content">
+      {% for cat, msg in get_flashed_messages() %}
+        {% if cat == 'ok' %}<div class="toast" role="status"><span class="toast-ic">✓</span><span>{{ msg }}</span></div>
+        {% elif cat == 'deny' %}<div class="flash rule" style="background:var(--warn-soft);border-color:#fedf89;color:#93370d"><span class="t">🔒 Not allowed for your role:</span><span>{{ msg }}</span></div>
+        {% else %}<div class="flash rule"><span class="t">⛔ Rejected by the database:</span><span>{{ msg }}</span></div>{% endif %}
+      {% endfor %}
+      {% if not_found %}
+        <div class="card"><h1>Page not found</h1><p class="muted">The record or page does not exist. <a href="{{ url_for('dashboard') }}">Back to the dashboard</a>.</p></div>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+<div class="drawer-overlay" id="overlay"></div>
+<aside class="drawer" id="drawer" aria-hidden="true">
+  <button class="drawer-close" type="button" aria-label="Close">✕</button>
+  <div class="drawer-body" id="drawer-body"></div>
+</aside>
+<div class="progress" id="progress"></div>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

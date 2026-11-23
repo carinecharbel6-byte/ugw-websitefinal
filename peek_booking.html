@@ -1,0 +1,46 @@
+{% from "_ui.html" import status, balance, avatar %}
+<div class="drawer-head">
+  <div class="big-icon">{{ ICON.get(services[0].serviceType, '🧳') if services else '🧳' }}</div>
+  <div>
+    <h2 style="margin:0">Booking #{{ b.bookingId }} {{ status(b.bookingStatus) }}</h2>
+    <div class="muted small">{{ b.clientName }} · booked {{ b.bookingDate|nice_date }} by {{ b.agent }}</div>
+  </div>
+</div>
+<div class="drawer-actions">
+  <a class="btn btn-primary btn-sm" href="{{ url_for('booking_detail', bid=b.bookingId) }}">Open booking</a>
+  {% for i in invoices if i.invoiceStatus != 'Paid' %}{% if loop.first %}<a class="btn btn-sm" href="{{ url_for('payment_new', invoice=i.invoiceNo) }}">Record payment</a>{% endif %}{% endfor %}
+  <a class="btn btn-sm" href="{{ url_for('client_detail', cid=b.clientId) }}">Client profile</a>
+</div>
+
+<div class="drawer-section stat-row">
+  <div><div class="muted small">Total</div><b>${{ b.totalAmount|money }}</b></div>
+  <div><div class="muted small">Paid</div><b>${{ b.paid|money }}</b></div>
+  <div><div class="muted small">Balance</div>{{ balance(b.balanceDue) }}</div>
+</div>
+
+<div class="drawer-section">
+  <h3>Itinerary</h3>
+  <div class="timeline">
+  {% for s in services %}
+    <div class="tl-item {{ 'cancelled' if s.serviceStatus == 'Cancelled' }}">
+      <div class="tl-icon">{{ ICON.get(s.serviceType, '•') }}</div>
+      <div><b>{{ s.serviceType }}</b> · {{ s.supplierName }}
+        <div class="small muted">{{ s.startDate|nice_date }}{% if s.endDate %} → {{ s.endDate|nice_date }}{% endif %} · ${{ s.price|money }}{% if s.serviceStatus == 'Cancelled' %} · cancelled{% endif %}</div></div>
+    </div>
+  {% endfor %}
+  </div>
+</div>
+
+<div class="drawer-section">
+  <h3>Travelers ({{ travelers|length }})</h3>
+  {% for t in travelers %}
+    <div class="person">{{ avatar(t.firstName ~ ' ' ~ t.lastName, 30) }}<span>{{ t.firstName }} {{ t.lastName }}{% if t.isLeadTraveler %} <span class="badge b-brand">Lead</span>{% endif %}</span></div>
+  {% endfor %}
+</div>
+
+<div class="drawer-section">
+  <h3>Invoices</h3>
+  {% for i in invoices %}
+    <div class="mini-row"><span><b>{{ i.invoiceNo }}</b> <span class="muted small">{{ i.invoiceType }} · due {{ i.dueDate|nice_date }}</span></span><span>${{ i.amount|money }} {{ status(i.invoiceStatus) }}</span></div>
+  {% endfor %}
+</div>

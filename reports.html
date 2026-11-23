@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}SQL Reports{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>SQL Reports</h1><p>The eighteen queries of Chapter 7, read directly from <code>ugw_queries.sql</code> and run live on the database.</p></div></div>
+<div class="grid g3">
+  <div class="card qlist" style="align-self:start">
+    {% for b in blocks %}
+      <a href="{{ url_for('reports', q=b.id) }}" class="{{ 'on' if run == b.id }}"><span class="qid">{{ b.id }}</span>{{ b.title }}</a>
+    {% endfor %}
+  </div>
+  <div class="span2">
+    {% if result %}
+      <div class="card">
+        <div class="card-head"><h2>{{ result.blk.id }}. {{ result.blk.title }}</h2><span class="badge b-ok">{{ result.rows|length }} row(s)</span></div>
+        <p style="margin-top:0">{{ result.blk.purpose }}</p>
+        <details open><summary>SQL</summary><pre class="sql">{{ result.blk.sql }}</pre></details>
+      </div>
+      <div class="card">
+        <h2>Result</h2>
+        {% if result.rows %}
+        <div class="table-wrap"><table>
+          <thead><tr>{% for c in result.cols %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+          <tbody>{% for r in result.rows %}<tr>{% for v in r %}
+            <td class="{{ 'num' if v is number }}">{% if v is none %}<span class="muted">NULL</span>{% elif v is float %}{{ v|money }}{% else %}{{ v }}{% endif %}</td>
+          {% endfor %}</tr>{% endfor %}</tbody>
+        </table></div>
+        {% else %}<div class="empty">The query returned no rows. For a rule check such as Q14, an empty result means the rule holds.</div>{% endif %}
+      </div>
+    {% else %}
+      <div class="card">
+        <h2>Choose a query</h2>
+        <p class="muted">Each query answers a business question and demonstrates SQL features from the course: filtering, sorting, joins, aggregate functions, GROUP BY and HAVING. Queries that depend on the date use the report's reference date, {{ REPORT_DATE|nice_date }}, so the results are the same as in Chapter 7.</p>
+        <div class="grid g2">
+          {% for b in blocks %}
+            <a class="card" style="padding:12px 14px;text-decoration:none;color:inherit" href="{{ url_for('reports', q=b.id) }}"><b style="color:var(--brand)">{{ b.id }}</b> · {{ b.title }}</a>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
